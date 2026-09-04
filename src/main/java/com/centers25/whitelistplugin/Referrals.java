@@ -7,7 +7,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -24,17 +23,17 @@ import java.util.regex.Pattern;
 final class Referrals implements Listener {
     private static final Pattern NAME = Pattern.compile("^[.-]?[A-Za-z0-9_]{1,32}$");
     private static final String ITEM = "minecraft:compass[minecraft:lodestone_tracker={target:{pos:[I;-68,67,-45],dimension:\"minecraft:overworld\"}},minecraft:custom_name={text:\"Friend Ticket\",color:\"gold\",italic:false},minecraft:lore=[{text:\"Redeem at spawn\",color:\"gray\",italic:false}],minecraft:custom_data={friend_ticket:1b}]";
-    private final JavaPlugin plugin;
+    private final WhitelistPlugin plugin;
     private final Path file;
     private final Gson gson = new Gson();
     private State state;
     private ItemStack ticket;
 
-    Referrals(JavaPlugin plugin) {
+    Referrals(WhitelistPlugin plugin) {
         this(plugin, plugin.getDataFolder().toPath().resolve("referrals.json"));
     }
 
-    Referrals(JavaPlugin plugin, Path file) {
+    Referrals(WhitelistPlugin plugin, Path file) {
         this.plugin = plugin;
         this.file = file;
         this.state = load();
@@ -99,7 +98,7 @@ final class Referrals implements Listener {
         try {
             delivered = add(player, amount);
         } catch (IllegalArgumentException error) {
-            plugin.getLogger().severe("Could not create friend tickets: " + ErrorMessages.safe(error));
+            plugin.log().error("Could not create friend tickets: " + ErrorMessages.safe(error), error);
             return;
         }
         if (delivered == 0) return;
@@ -115,7 +114,7 @@ final class Referrals implements Listener {
                 save(next);
                 state = next;
             } catch (IOException error) {
-                plugin.getLogger().severe("Could not save friend ticket delivery: " + ErrorMessages.safe(error));
+                plugin.log().error("Could not save friend ticket delivery: " + ErrorMessages.safe(error), error);
             }
         }
     }
@@ -142,7 +141,7 @@ final class Referrals implements Listener {
                     loaded.counts() == null ? new HashMap<>() : new HashMap<>(loaded.counts()),
                     loaded.pending() == null ? new HashMap<>() : new HashMap<>(loaded.pending()));
         } catch (Exception error) {
-            if (plugin != null) plugin.getLogger().warning("Could not load referrals: " + ErrorMessages.safe(error));
+            if (plugin != null) plugin.log().warn("Could not load referrals: " + ErrorMessages.safe(error), error);
             return empty();
         }
     }

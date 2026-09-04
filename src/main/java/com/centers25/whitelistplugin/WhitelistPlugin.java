@@ -1,6 +1,8 @@
 package com.centers25.whitelistplugin;
 
 import com.centers25.core.discord.DiscordService;
+import com.centers25.core.logging.PluginLogger;
+import com.centers25.core.logging.PluginLogs;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -29,9 +31,11 @@ public final class WhitelistPlugin extends JavaPlugin {
     private Referrals referrals;
     private Set<String> authUsers;
     private Set<String> whitelistUsers;
+    private PluginLogger log;
 
     @Override
     public void onEnable() {
+        log = PluginLogs.get(this);
         saveDefaultConfig();
         if (!start()) Bukkit.getPluginManager().disablePlugin(this);
     }
@@ -39,7 +43,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     private synchronized boolean start() {
         discord = getServer().getServicesManager().load(DiscordService.class);
         if (discord == null) {
-            getLogger().severe("plugincore Discord service is unavailable.");
+            log.error("plugincore Discord service is unavailable.");
             return false;
         }
         authUsers = new HashSet<>(getConfig().getStringList("auth-allowed-discord-user-ids"));
@@ -66,7 +70,9 @@ public final class WhitelistPlugin extends JavaPlugin {
         referrals.start();
         bot = new DiscordBot(this, pool, auth, lookup, parser, craftlands, referrals);
         discord.register(this, bot, bot.commands());
-        getLogger().info("Registered Discord commands with plugincore.");
+        log.info("Registered Discord commands with plugincore.");
+        log.debug("Whitelist services started; automatic review=" + autoEnabled()
+                + ", allowed channel count=" + whitelistChannels().size() + ".");
         return true;
     }
 
@@ -97,6 +103,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     }
 
     synchronized void restart() {
+        log.debug("Restarting whitelist services.");
         stop();
         reloadConfig();
         if (!start()) {
@@ -106,6 +113,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     }
 
     private synchronized void stop() {
+        if (log != null) log.debug("Stopping whitelist services.");
         if (discord != null) discord.unregister(this);
         if (pool != null) pool.shutdownNow();
         if (referrals != null) HandlerList.unregisterAll(referrals);
@@ -125,6 +133,10 @@ public final class WhitelistPlugin extends JavaPlugin {
 
     DiscordService discord() {
         return discord;
+    }
+
+    PluginLogger log() {
+        return log;
     }
 
     String roleId() {

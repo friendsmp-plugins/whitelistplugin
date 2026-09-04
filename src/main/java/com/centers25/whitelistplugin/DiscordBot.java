@@ -66,6 +66,7 @@ final class DiscordBot extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (event.getGuild() == null || !event.getGuild().getId().equals(plugin.discord().guildId())) return;
+        plugin.log().debug("Received whitelist Discord command '" + event.getName() + "'.");
         if (event.getName().equals("auth")) defer(event, hook -> runAuth(event, hook));
         if (event.getName().equals("whitelist")) defer(event, hook -> runWhitelist(event, hook));
         if (event.getName().equals("manualwhitelist")) defer(event, hook -> runManual(event, hook));
@@ -105,7 +106,7 @@ final class DiscordBot extends ListenerAdapter {
         if (!thread.getGuild().getId().equals(plugin.discord().guildId())) return;
         if (!thread.getParentChannel().getId().equals(plugin.autoForumId())) return;
         if (plugin.autoForumId().equals(plugin.logChannelId())) {
-            plugin.getLogger().warning("Autowhitelist forum cannot also be the log forum.");
+            plugin.log().warn("Autowhitelist forum cannot also be the log forum.");
             return;
         }
         pool.execute(() -> runAuto(thread));
@@ -129,6 +130,7 @@ final class DiscordBot extends ListenerAdapter {
             edit(hook, "**Device code**\n`" + WhitelistPlugin.safe(code.userCode())
                     + "`\n\n[Open Microsoft sign-in](https://microsoft.com/link?otc=" + code.userCode() + ")");
             auth.completeDeviceLogin(code);
+            plugin.log().debug("Minecraft account lookup authentication completed.");
             edit(hook, "Authentication complete.");
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
@@ -167,6 +169,7 @@ final class DiscordBot extends ListenerAdapter {
             return;
         }
         try {
+            plugin.log().debug("Starting whitelist channel scan.");
             edit(hook, process(event.getGuild(), event.getChannel(), message -> edit(hook, message)));
         } catch (Exception error) {
             fail(hook, "Whitelist", error);
@@ -223,7 +226,7 @@ final class DiscordBot extends ListenerAdapter {
             try {
                 plugin.restart();
             } catch (RuntimeException error) {
-                plugin.getLogger().severe("Reload failed: " + ErrorMessages.safe(error));
+                plugin.log().error("Reload failed: " + ErrorMessages.safe(error), error);
             }
         });
     }
@@ -251,6 +254,7 @@ final class DiscordBot extends ListenerAdapter {
             return;
         }
         plugin.auto(enabled, forumOption == null ? null : forumId);
+        plugin.log().debug("Automatic whitelist review set to " + enabled + ".");
         edit(hook, enabled ? "Automatic review enabled." : "Automatic review disabled.");
     }
 
@@ -260,11 +264,11 @@ final class DiscordBot extends ListenerAdapter {
         try {
             Thread.sleep(1500);
             String result = process(thread.getGuild(), thread, ignored -> { });
-            plugin.getLogger().info("Autowhitelist " + thread.getName() + ": " + result);
+            plugin.log().info("Autowhitelist " + thread.getName() + ": " + result);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
         } catch (Exception error) {
-            plugin.getLogger().warning("Autowhitelist failed for " + thread.getName() + ": " + ErrorMessages.safe(error));
+            plugin.log().warn("Autowhitelist failed for " + thread.getName() + ": " + ErrorMessages.safe(error), error);
         } finally {
             busy.remove(id);
         }
@@ -447,7 +451,7 @@ final class DiscordBot extends ListenerAdapter {
                 .build();
         member.getUser().openPrivateChannel()
                 .flatMap(channel -> channel.sendMessageEmbeds(embed))
-                .queue(ignored -> { }, error -> plugin.getLogger().warning("Could not DM the whitelisted user."));
+                .queue(ignored -> { }, error -> plugin.log().warn("Could not DM the whitelisted user.", error));
     }
 
     private static List<ChatScan.Item> items(List<Message> messages) {
@@ -493,7 +497,7 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     private void fail(InteractionHook hook, String action, Exception error) {
-        plugin.getLogger().warning(action + " failed: " + ErrorMessages.safe(error));
+        plugin.log().warn(action + " failed: " + ErrorMessages.safe(error), error);
         edit(hook, action + " failed.\nReason: " + ErrorMessages.safe(error));
     }
 
