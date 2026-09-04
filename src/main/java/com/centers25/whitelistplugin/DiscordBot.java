@@ -40,7 +40,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 final class DiscordBot extends ListenerAdapter {
-    private static final int EMBED_COLOR = 0x2F6F62;
     private final WhitelistPlugin plugin;
     private final ExecutorService pool;
     private final MicrosoftXboxAuthService auth;
@@ -75,28 +74,28 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     List<CommandData> commands() {
-        OptionData role = new OptionData(OptionType.ROLE, "role", "Role granted after approval");
-        OptionData log = new OptionData(OptionType.CHANNEL, "log_channel", "Channel used for whitelist records");
-        OptionData allowed = new OptionData(OptionType.CHANNEL, "allowed_channel", "Channel permitted to use /whitelist");
-        OptionData channelEnabled = new OptionData(OptionType.BOOLEAN, "channel_enabled", "Permit or remove the selected channel");
-        OptionData enabled = new OptionData(OptionType.BOOLEAN, "enabled", "Enable automatic application review", true);
-        OptionData forum = new OptionData(OptionType.CHANNEL, "forum", "Forum used for automatic review");
-        OptionData applicant = new OptionData(OptionType.USER, "discord", "Applicant's Discord account", true);
+        OptionData role = new OptionData(OptionType.ROLE, "role", "Save the role granted after whitelisting");
+        OptionData log = new OptionData(OptionType.CHANNEL, "log_channel", "Save the channel where log threads are created");
+        OptionData allowed = new OptionData(OptionType.CHANNEL, "allowed_channel", "Add or remove a channel or forum for /whitelist");
+        OptionData channelEnabled = new OptionData(OptionType.BOOLEAN, "channel_enabled", "Add or remove the allowed channel");
+        OptionData enabled = new OptionData(OptionType.BOOLEAN, "enabled", "Enable or disable automatic whitelisting", true);
+        OptionData forum = new OptionData(OptionType.CHANNEL, "forum", "Forum whose new posts are reviewed");
+        OptionData applicant = new OptionData(OptionType.USER, "discord", "Discord member being whitelisted", true);
         OptionData username = new OptionData(OptionType.STRING, "username", "Minecraft username or gamertag", true);
         OptionData platform = new OptionData(OptionType.STRING, "platform", "Minecraft platform", true)
-                .addChoice("Java (Microsoft account)", OpenRouterParsingService.Platform.REGULAR_JAVA.name())
-                .addChoice("Java (offline account)", OpenRouterParsingService.Platform.CRACKED_JAVA.name())
+                .addChoice("Regular/Premium Java", OpenRouterParsingService.Platform.REGULAR_JAVA.name())
+                .addChoice("Cracked Java", OpenRouterParsingService.Platform.CRACKED_JAVA.name())
                 .addChoice("Bedrock", OpenRouterParsingService.Platform.BEDROCK.name());
-        OptionData referrer = new OptionData(OptionType.USER, "referrer", "Referrer's Discord account");
-        OptionData referrerName = new OptionData(OptionType.STRING, "referrer_username", "Referrer's Minecraft username");
+        OptionData referrer = new OptionData(OptionType.USER, "referrer", "Optional Discord referrer");
+        OptionData referrerName = new OptionData(OptionType.STRING, "referrer_username", "Optional referrer Minecraft username");
         return List.of(
-                Commands.slash("auth", "Authenticate the Bedrock lookup service"),
-                Commands.slash("whitelist", "Review and whitelist the current applicant")
+                Commands.slash("auth", "Authenticate the Bedrock lookup account"),
+                Commands.slash("whitelist", "Scan this channel or thread and whitelist the applicant")
                         .addOptions(role, log, allowed, channelEnabled),
-                Commands.slash("manualwhitelist", "Whitelist an applicant using supplied details")
+                Commands.slash("manualwhitelist", "Whitelist an applicant with manually supplied details")
                         .addOptions(applicant, username, platform, referrer, referrerName),
-                Commands.slash("autowhitelist", "Configure automatic application review").addOptions(enabled, forum),
-                Commands.slash("whitelistreload", "Reload whitelist configuration")
+                Commands.slash("autowhitelist", "Configure automatic forum whitelisting").addOptions(enabled, forum),
+                Commands.slash("whitelistreload", "Reload whitelistplugin configuration")
         );
     }
 
@@ -127,8 +126,7 @@ final class DiscordBot extends ListenerAdapter {
         }
         try {
             MicrosoftXboxAuthService.DeviceCode code = auth.beginDeviceLogin();
-            edit(hook, "**Device code**\n`" + WhitelistPlugin.safe(code.userCode())
-                    + "`\n\n[Open Microsoft sign-in](https://microsoft.com/link?otc=" + code.userCode() + ")");
+            edit(hook, "**Code:** `" + WhitelistPlugin.safe(code.userCode()) + "`\n**Link:** https://microsoft.com/link?otc=" + code.userCode());
             auth.completeDeviceLogin(code);
             plugin.log().debug("Minecraft account lookup authentication completed.");
             edit(hook, "Authentication complete.");
@@ -170,7 +168,7 @@ final class DiscordBot extends ListenerAdapter {
         }
         try {
             plugin.log().debug("Starting whitelist channel scan.");
-            edit(hook, process(event.getGuild(), event.getChannel(), message -> edit(hook, message)));
+            edit(hook, process(event.getGuild(), event.getChannel(), message -> hook.editOriginal(message).complete()));
         } catch (Exception error) {
             fail(hook, "Whitelist", error);
         } finally {
@@ -190,7 +188,7 @@ final class DiscordBot extends ListenerAdapter {
         OptionMapping referrerOption = event.getOption("referrer");
         OptionMapping referrerNameOption = event.getOption("referrer_username");
         if ((referrerOption == null) != (referrerNameOption == null)) {
-            edit(hook, "Referral details are incomplete.");
+            edit(hook, "Missing referral info");
             return;
         }
         User applicant = event.getOption("discord").getAsUser();
@@ -221,7 +219,7 @@ final class DiscordBot extends ListenerAdapter {
             edit(hook, "Administrator permission is required.");
             return;
         }
-        edit(hook, "Configuration reload started.");
+        edit(hook, "Reloading whitelistplugin...");
         Bukkit.getScheduler().runTask(plugin, () -> {
             try {
                 plugin.restart();
@@ -242,11 +240,11 @@ final class DiscordBot extends ListenerAdapter {
         String forumId = forumOption == null ? plugin.autoForumId() : forumOption.getAsChannel().getId();
         ForumChannel forum = forumId.isBlank() ? null : event.getGuild().getForumChannelById(forumId);
         if (enabled && forum == null) {
-            edit(hook, "Select a forum before enabling automatic review.");
+            edit(hook, "Select a forum when enabling autowhitelist.");
             return;
         }
         if (enabled && forumId.equals(plugin.logChannelId())) {
-            edit(hook, "The review forum and log forum must be different.");
+            edit(hook, "The autowhitelist forum and log forum must be different.");
             return;
         }
         if (forumOption != null && forum == null) {
@@ -255,7 +253,7 @@ final class DiscordBot extends ListenerAdapter {
         }
         plugin.auto(enabled, forumOption == null ? null : forumId);
         plugin.log().debug("Automatic whitelist review set to " + enabled + ".");
-        edit(hook, enabled ? "Automatic review enabled." : "Automatic review disabled.");
+        edit(hook, enabled ? "Autowhitelist enabled." : "Autowhitelist disabled.");
     }
 
     private void runAuto(ThreadChannel thread) {
@@ -294,7 +292,7 @@ final class DiscordBot extends ListenerAdapter {
                 return;
             }
             if (plugin.autoEnabled() && channel.getId().equals(plugin.autoForumId())) {
-                edit(hook, "The log forum and review forum must be different.");
+                edit(hook, "The log forum and autowhitelist forum must be different.");
                 return;
             }
             channelId = channel.getId();
@@ -312,21 +310,21 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     private String process(Guild guild, MessageChannel channel, Progress progress) throws Exception {
-        progress.show("**Step 1 of 4**\nReading application.");
+        progress.show("[1/4] Parsing channel");
         List<Message> messages = channel.getHistory().retrievePast(plugin.scanLimit()).complete();
         ChatScan.Scan scan = ChatScan.build(items(messages), plugin.maxMessage(), plugin.maxInput());
-        if (scan.empty()) return "Application incomplete. Required account details were not found.";
+        if (scan.empty()) return "Missing important info";
 
-        progress.show("**Step 2 of 4**\nReviewing application.");
+        progress.show("[2/4] AI is handling this...");
         OpenRouterParsingService.App app;
         try {
             app = parser.parse(scan.transcript());
         } catch (HttpTimeoutException error) {
-            progress.show("**Step 2 of 4**\nReview timed out. Retrying.");
+            progress.show("[2/4] AI timed out, retrying...");
             app = parser.parse(scan.transcript());
         }
-        if (!app.complete(scan.users())) return "Application incomplete. Required account details were not found.";
-        if (app.incompleteReferral(scan.users())) return "Referral details are incomplete.";
+        if (!app.complete(scan.users())) return "Missing important info";
+        if (app.incompleteReferral(scan.users())) return "Missing referral info";
 
         return apply(guild, app, progress);
     }
@@ -335,25 +333,25 @@ final class DiscordBot extends ListenerAdapter {
         Role role = guild.getRoleById(plugin.roleId());
         GuildChannel rawLog = guild.getGuildChannelById(plugin.logChannelId());
         if (role == null || !(rawLog instanceof IThreadContainer)) {
-            return "Run `/whitelist` with valid `role` and `log_channel` options first.";
+            return "Configure a valid role and log channel with `/whitelist role:... log_channel:...` first.";
         }
         if (!guild.getSelfMember().canInteract(role)) {
             return "The bot role must be above the configured whitelist role.";
         }
 
-        progress.show("**Step 3 of 4**\nAdding player to the whitelist.");
+        progress.show("[3/4] Whitelisting this user...");
         Member member = guild.retrieveMemberById(app.userId()).complete();
         Checked checked = check(app);
-        if (!checked.valid()) return "Application declined. The Minecraft account could not be verified.";
+        if (!checked.valid()) return "False";
         Referral referral = referral(guild, member, role, app, checked.name());
         craftlands.add(checked.name());
         if (referral != null) referrals.reward(referral.userId(), referral.name(), checked.name());
         if (!member.getRoles().contains(role)) guild.addRoleToMember(member, role).complete();
 
-        progress.show("**Step 4 of 4**\nSaving whitelist record.");
+        progress.show("[4/4] Logging user");
         log(member, rawLog, app, checked.name());
-        dm(member, checked.name());
-        return "Application approved.\nMinecraft: `" + WhitelistPlugin.safe(checked.name()) + "`";
+        dm(member);
+        return "True - `" + WhitelistPlugin.safe(checked.name()) + "`";
     }
 
     static boolean listed(Set<String> channels, MessageChannel channel) {
@@ -427,27 +425,21 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     private void log(Member member, GuildChannel log, OpenRouterParsingService.App app, String name) {
-        MessageEmbed entry = new EmbedBuilder()
-                .setColor(EMBED_COLOR)
-                .setTitle("Whitelist record")
-                .addField("Minecraft", WhitelistPlugin.safe(name), true)
-                .addField("Platform", app.platform().label(), true)
-                .addField("Discord", "<@" + member.getId() + ">", true)
-                .build();
-        String threadName = "Whitelist — " + name;
+        String entry = "In-Game Name/Gamertag: " + WhitelistPlugin.safe(name)
+                + "\n\nPlatform: " + app.platform().label()
+                + "\n\nDiscord: <@" + member.getId() + ">";
         if (log instanceof IPostContainer forum) {
-            forum.createForumPost(threadName, MessageCreateData.fromEmbeds(entry)).complete();
+            forum.createForumPost("Whitelist", MessageCreateData.fromContent(entry)).complete();
         } else {
-            ThreadChannel thread = ((IThreadContainer) log).createThreadChannel(threadName).complete();
-            thread.sendMessageEmbeds(entry).complete();
+            ThreadChannel thread = ((IThreadContainer) log).createThreadChannel("Whitelist").complete();
+            thread.sendMessage(entry).complete();
         }
     }
 
-    private void dm(Member member, String name) {
+    private void dm(Member member) {
         MessageEmbed embed = new EmbedBuilder()
-                .setTitle("Whitelist approved")
-                .setDescription("Your application has been approved.\nMinecraft: `" + WhitelistPlugin.safe(name) + "`")
-                .setColor(EMBED_COLOR)
+                .setDescription("You have been whitelisted.")
+                .setColor(0x90EE90)
                 .build();
         member.getUser().openPrivateChannel()
                 .flatMap(channel -> channel.sendMessageEmbeds(embed))
@@ -498,16 +490,11 @@ final class DiscordBot extends ListenerAdapter {
 
     private void fail(InteractionHook hook, String action, Exception error) {
         plugin.log().warn(action + " failed: " + ErrorMessages.safe(error), error);
-        edit(hook, action + " failed.\nReason: " + ErrorMessages.safe(error));
+        edit(hook, action + " failed: " + ErrorMessages.safe(error));
     }
 
     private static void edit(InteractionHook hook, String message) {
-        MessageEmbed embed = new EmbedBuilder()
-                .setColor(EMBED_COLOR)
-                .setTitle("Whitelist")
-                .setDescription(message)
-                .build();
-        hook.editOriginalEmbeds(embed).complete();
+        hook.editOriginal(message).complete();
     }
 
     private record Checked(boolean valid, String name) { }
