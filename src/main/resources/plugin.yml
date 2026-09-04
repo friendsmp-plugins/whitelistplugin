@@ -3,10 +3,14 @@ version: '${version}'
 main: com.centers25.whitelistplugin.WhitelistPlugin
 api-version: '26.2'
 author: centers25
+description: Manages Discord-based Minecraft whitelist applications.
 depend: [plugincore]
 commands:
   whitelistpluginreload:
+    description: Reload whitelist configuration.
+    usage: /whitelistpluginreload
     permission: whitelistplugin.reload
 permissions:
   whitelistplugin.reload:
+    description: Allows whitelist configuration reloads.
     default: op

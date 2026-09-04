@@ -1,6 +1,8 @@
 package com.centers25.whitelistplugin;
 
 import com.centers25.core.discord.DiscordService;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -16,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class WhitelistPlugin extends JavaPlugin {
+    private static final Component PREFIX = Component.text("[Whitelist] ", NamedTextColor.DARK_GREEN);
     private ExecutorService pool;
     private DiscordBot bot;
     private DiscordService discord;
@@ -77,16 +80,20 @@ public final class WhitelistPlugin extends JavaPlugin {
                              @NotNull String label, @NotNull String[] args) {
         if (!command.getName().equals("whitelistpluginreload")) return false;
         if (!sender.hasPermission("whitelistplugin.reload")) {
-            sender.sendMessage("You do not have permission to reload whitelistplugin.");
+            message(sender, "Administrator permission is required.");
             return true;
         }
         try {
             restart();
-            sender.sendMessage("whitelistplugin reloaded.");
+            message(sender, "Configuration reloaded.");
         } catch (RuntimeException error) {
-            sender.sendMessage("whitelistplugin reload failed: " + ErrorMessages.safe(error));
+            message(sender, "Reload failed: " + ErrorMessages.safe(error));
         }
         return true;
+    }
+
+    private static void message(CommandSender sender, String value) {
+        sender.sendMessage(PREFIX.append(Component.text(value, NamedTextColor.GRAY)));
     }
 
     synchronized void restart() {
