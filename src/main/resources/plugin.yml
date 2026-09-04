@@ -1,0 +1,11 @@
+name: whitelistplugin
+version: '${version}'
+main: com.centers25.whitelistplugin.WhitelistPlugin
+api-version: '26.2'
+author: centers25
+commands:
+  whitelistpluginreload:
+    permission: whitelistplugin.reload
+permissions:
+  whitelistplugin.reload:
+    default: op

@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'whitelistplugin'

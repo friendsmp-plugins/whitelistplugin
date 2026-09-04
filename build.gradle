@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '9.4.3'
+}
+
+group = 'com.centers25'
+version = '1.0.0'
+
+repositories {
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.112-stable'
+    implementation 'com.google.code.gson:gson:2.13.2'
+    implementation('net.dv8tion:JDA:6.5.0') {
+        exclude group: 'club.minnced', module: 'opus-java'
+        exclude group: 'com.google.crypto.tink', module: 'tink'
+    }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testImplementation 'io.papermc.paper:paper-api:26.2.build.112-stable'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 26
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('plugin.yml') {
+        expand(version: project.version)
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+tasks.named('shadowJar') {
+    archiveFileName = 'whitelistplugin.jar'
+    relocate 'com.google.gson', 'com.centers25.whitelist.libs.gson'
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('shadowJar')
+}
