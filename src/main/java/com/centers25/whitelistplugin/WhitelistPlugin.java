@@ -1,5 +1,6 @@
 package com.centers25.whitelistplugin;
 
+import com.centers25.core.discord.DiscordService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -17,6 +18,7 @@ import java.util.concurrent.Executors;
 public final class WhitelistPlugin extends JavaPlugin {
     private ExecutorService pool;
     private DiscordBot bot;
+    private DiscordService discord;
     private MicrosoftXboxAuthService auth;
     private GamertagLookupService lookup;
     private OpenRouterParsingService parser;
@@ -32,6 +34,11 @@ public final class WhitelistPlugin extends JavaPlugin {
     }
 
     private synchronized boolean start() {
+        discord = getServer().getServicesManager().load(DiscordService.class);
+        if (discord == null) {
+            getLogger().severe("plugincore Discord service is unavailable.");
+            return false;
+        }
         authUsers = new HashSet<>(getConfig().getStringList("auth-allowed-discord-user-ids"));
         whitelistUsers = new HashSet<>(getConfig().getStringList("whitelist-allowed-discord-user-ids"));
         Duration http = Duration.ofSeconds(Math.max(5, getConfig().getLong("http-timeout-seconds", 30)));
@@ -42,14 +49,6 @@ public final class WhitelistPlugin extends JavaPlugin {
         if (key == null || key.isBlank()) key = getConfig().getString("openrouter-api-key", "");
         String craftlandsKey = System.getenv("CRAFTLANDS_API_KEY");
         if (craftlandsKey == null || craftlandsKey.isBlank()) craftlandsKey = getConfig().getString("craftlands-api-key", "");
-        String discordToken = System.getenv("DISCORD_BOT_TOKEN");
-        if (discordToken == null || discordToken.isBlank()) discordToken = getConfig().getString("discord-bot-token", "");
-        String guildId = System.getenv("DISCORD_GUILD_ID");
-        if (guildId == null || guildId.isBlank()) guildId = getConfig().getString("discord-guild-id", "");
-        if (discordToken.isBlank() || guildId.isBlank()) {
-            getLogger().severe("Discord bot access is not configured.");
-            return false;
-        }
         Path tokens = getDataFolder().toPath().resolve("auth").resolve("tokens.json");
 
         pool = Executors.newVirtualThreadPerTaskExecutor();
@@ -63,8 +62,8 @@ public final class WhitelistPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(referrals, this);
         referrals.start();
         bot = new DiscordBot(this, pool, auth, lookup, parser, craftlands, referrals);
-        bot.start(discordToken, guildId);
-        getLogger().info("Enabled Discord commands.");
+        discord.register(this, bot, bot.commands());
+        getLogger().info("Registered Discord commands with plugincore.");
         return true;
     }
 
@@ -95,16 +94,17 @@ public final class WhitelistPlugin extends JavaPlugin {
         reloadConfig();
         if (!start()) {
             Bukkit.getPluginManager().disablePlugin(this);
-            throw new IllegalStateException("Discord bot access is not configured.");
+            throw new IllegalStateException("plugincore Discord service is unavailable.");
         }
     }
 
     private synchronized void stop() {
+        if (discord != null) discord.unregister(this);
         if (pool != null) pool.shutdownNow();
-        if (bot != null) bot.stop();
         if (referrals != null) HandlerList.unregisterAll(referrals);
         pool = null;
         bot = null;
+        discord = null;
         referrals = null;
     }
 
@@ -114,6 +114,10 @@ public final class WhitelistPlugin extends JavaPlugin {
 
     Set<String> whitelistUsers() {
         return Set.copyOf(whitelistUsers);
+    }
+
+    DiscordService discord() {
+        return discord;
     }
 
     String roleId() {

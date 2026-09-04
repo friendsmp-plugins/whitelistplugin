@@ -1,7 +1,5 @@
 package com.centers25.whitelistplugin;
 
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -18,21 +16,18 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.events.channel.ChannelCreateEvent;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.bukkit.Bukkit;
 
-import java.time.Duration;
 import java.net.http.HttpTimeoutException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -54,8 +49,6 @@ final class DiscordBot extends ListenerAdapter {
     private final Referrals referrals;
     private final AtomicBoolean authBusy = new AtomicBoolean();
     private final Set<String> busy = ConcurrentHashMap.newKeySet();
-    private JDA jda;
-    private String guildId;
 
     DiscordBot(WhitelistPlugin plugin, ExecutorService pool, MicrosoftXboxAuthService auth,
                GamertagLookupService lookup, OpenRouterParsingService parser,
@@ -69,30 +62,9 @@ final class DiscordBot extends ListenerAdapter {
         this.referrals = referrals;
     }
 
-    void start(String token, String guildId) {
-        this.guildId = guildId;
-        jda = JDABuilder.createLight(token, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
-                .addEventListeners(this)
-                .build();
-    }
-
-    void stop() {
-        if (jda == null) return;
-        jda.shutdown();
-        try {
-            if (!jda.awaitShutdown(Duration.ofSeconds(5))) {
-                jda.shutdownNow();
-                jda.awaitShutdown(Duration.ofSeconds(5));
-            }
-        } catch (InterruptedException error) {
-            Thread.currentThread().interrupt();
-            jda.shutdownNow();
-        }
-    }
-
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if (event.getGuild() == null || !event.getGuild().getId().equals(guildId)) return;
+        if (event.getGuild() == null || !event.getGuild().getId().equals(plugin.discord().guildId())) return;
         if (event.getName().equals("auth")) defer(event, hook -> runAuth(event, hook));
         if (event.getName().equals("whitelist")) defer(event, hook -> runWhitelist(event, hook));
         if (event.getName().equals("manualwhitelist")) defer(event, hook -> runManual(event, hook));
@@ -100,22 +72,7 @@ final class DiscordBot extends ListenerAdapter {
         if (event.getName().equals("whitelistreload")) defer(event, hook -> runReload(event, hook));
     }
 
-    @Override
-    public void onReady(ReadyEvent event) {
-        Guild guild = event.getJDA().getGuildById(guildId);
-        if (guild == null) {
-            plugin.getLogger().severe("The Discord bot cannot access the configured guild.");
-            return;
-        }
-        register(guild);
-    }
-
-    @Override
-    public void onGuildJoin(GuildJoinEvent event) {
-        if (event.getGuild().getId().equals(guildId)) register(event.getGuild());
-    }
-
-    private void register(Guild guild) {
+    List<CommandData> commands() {
         OptionData role = new OptionData(OptionType.ROLE, "role", "Save the role granted after whitelisting");
         OptionData log = new OptionData(OptionType.CHANNEL, "log_channel", "Save the channel where log threads are created");
         OptionData allowed = new OptionData(OptionType.CHANNEL, "allowed_channel", "Add or remove a channel or forum for /whitelist");
@@ -130,22 +87,21 @@ final class DiscordBot extends ListenerAdapter {
                 .addChoice("Bedrock", OpenRouterParsingService.Platform.BEDROCK.name());
         OptionData referrer = new OptionData(OptionType.USER, "referrer", "Optional Discord referrer");
         OptionData referrerName = new OptionData(OptionType.STRING, "referrer_username", "Optional referrer Minecraft username");
-        guild.updateCommands().addCommands(
+        return List.of(
                 Commands.slash("auth", "Authenticate the Bedrock lookup account"),
                 Commands.slash("whitelist", "Scan this channel or thread and whitelist the applicant")
                         .addOptions(role, log, allowed, channelEnabled),
                 Commands.slash("manualwhitelist", "Whitelist an applicant with manually supplied details")
                         .addOptions(applicant, username, platform, referrer, referrerName),
                 Commands.slash("autowhitelist", "Configure automatic forum whitelisting").addOptions(enabled, forum),
-                Commands.slash("whitelistreload", "Reload whitelistplugin configuration and Discord bot")
-        ).queue(commands -> plugin.getLogger().info("Registered 5 commands in the configured guild."),
-                error -> plugin.getLogger().severe("Could not register Discord commands: " + ErrorMessages.safe(error)));
+                Commands.slash("whitelistreload", "Reload whitelistplugin configuration")
+        );
     }
 
     @Override
     public void onChannelCreate(ChannelCreateEvent event) {
         if (!(event.getChannel() instanceof ThreadChannel thread) || !plugin.autoEnabled()) return;
-        if (!thread.getGuild().getId().equals(guildId)) return;
+        if (!thread.getGuild().getId().equals(plugin.discord().guildId())) return;
         if (!thread.getParentChannel().getId().equals(plugin.autoForumId())) return;
         if (plugin.autoForumId().equals(plugin.logChannelId())) {
             plugin.getLogger().warning("Autowhitelist forum cannot also be the log forum.");

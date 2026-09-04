@@ -1,7 +1,5 @@
 auth-allowed-discord-user-ids: []
 whitelist-allowed-discord-user-ids: []
-discord-bot-token: ""
-discord-guild-id: "1358968098631454764"
 whitelist-role-id: ""
 whitelist-log-channel-id: ""
 whitelist-channel-ids: []

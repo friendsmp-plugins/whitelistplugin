@@ -3,6 +3,7 @@ version: '${version}'
 main: com.centers25.whitelistplugin.WhitelistPlugin
 api-version: '26.2'
 author: centers25
+depend: [plugincore]
 commands:
   whitelistpluginreload:
     permission: whitelistplugin.reload
