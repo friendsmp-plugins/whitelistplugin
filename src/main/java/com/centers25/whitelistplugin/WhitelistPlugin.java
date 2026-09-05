@@ -58,7 +58,7 @@ public final class WhitelistPlugin extends JavaPlugin {
         pool = Executors.newVirtualThreadPerTaskExecutor();
         auth = new MicrosoftXboxAuthService(getConfig().getString("microsoft-client-id", "00000000441cc96b"), tokens, http, login);
         lookup = new GamertagLookupService(auth, http);
-        parser = new OpenRouterParsingService(key, getConfig().getString("openrouter-model", "google/gemini-3.5-flash"), ai);
+        parser = new OpenRouterParsingService(key, getConfig().getString("openrouter-model", "openai/gpt-5.6-luna:nitro"), ai);
         craftlands = new CraftlandsWhitelistService(
                 getConfig().getString("craftlands-api-base", "https://panel.craftlands.host"),
                 getConfig().getString("craftlands-server-uuid", ""), craftlandsKey, craftlandsTimeout);

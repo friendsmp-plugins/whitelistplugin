@@ -38,7 +38,7 @@ final class OpenRouterParsingService {
 
     OpenRouterParsingService(String key, String model, Duration timeout) {
         this.key = key == null ? "" : key.trim();
-        this.model = model == null || model.isBlank() ? "google/gemini-3.5-flash" : model.trim();
+        this.model = model == null || model.isBlank() ? "openai/gpt-5.6-luna:nitro" : model.trim();
         this.timeout = timeout;
         this.http = HttpClient.newBuilder().connectTimeout(timeout).build();
     }
@@ -111,7 +111,6 @@ final class OpenRouterParsingService {
         body.add("response_format", format);
 
         JsonObject provider = new JsonObject();
-        provider.addProperty("require_parameters", true);
         provider.addProperty("allow_fallbacks", true);
         provider.addProperty("sort", "latency");
         body.add("provider", provider);

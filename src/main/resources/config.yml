@@ -7,7 +7,7 @@ autowhitelist-enabled: false
 autowhitelist-forum-id: ""
 microsoft-client-id: "00000000441cc96b"
 openrouter-api-key: ""
-openrouter-model: "google/gemini-3.5-flash"
+openrouter-model: "openai/gpt-5.6-luna:nitro"
 openrouter-timeout-seconds: 20
 scan-message-limit: 50
 scan-max-message-chars: 1500
