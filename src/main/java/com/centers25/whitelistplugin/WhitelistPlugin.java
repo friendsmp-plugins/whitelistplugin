@@ -1,6 +1,7 @@
 package com.centers25.whitelistplugin;
 
 import com.centers25.core.discord.DiscordService;
+import com.centers25.core.backup.PluginBackups;
 import com.centers25.core.logging.PluginLogger;
 import com.centers25.core.logging.PluginLogs;
 import org.bukkit.Bukkit;
@@ -34,6 +35,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     public void onEnable() {
         log = PluginLogs.get(this);
         saveDefaultConfig();
+        PluginBackups.get(this).register(this);
         if (!start()) Bukkit.getPluginManager().disablePlugin(this);
     }
 
@@ -76,6 +78,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         stop();
+        PluginBackups.get(this).unregister(this);
     }
 
     @Override
