@@ -12,9 +12,9 @@ openrouter-timeout-seconds: 20
 scan-message-limit: 50
 scan-max-message-chars: 1500
 scan-max-input-chars: 8000
-craftlands-api-base: "https://panel.craftlands.host"
-craftlands-server-uuid: "2543f047-5c6f-46a9-bfdc-61683565c0d3"
-craftlands-api-key: ""
-craftlands-timeout-seconds: 15
+ultraservers-api-base: "https://panel.ultraservers.com"
+ultraservers-server-id: "f1fd5062"
+ultraservers-api-key: ""
+ultraservers-timeout-seconds: 15
 http-timeout-seconds: 30
 device-login-timeout-seconds: 900

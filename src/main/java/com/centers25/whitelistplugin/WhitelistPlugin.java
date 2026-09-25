@@ -25,7 +25,7 @@ public final class WhitelistPlugin extends JavaPlugin {
     private MicrosoftXboxAuthService auth;
     private GamertagLookupService lookup;
     private OpenRouterParsingService parser;
-    private CraftlandsWhitelistService craftlands;
+    private UltraServersWhitelistService ultraServers;
     private Referrals referrals;
     private Set<String> authUsers;
     private Set<String> whitelistUsers;
@@ -50,24 +50,24 @@ public final class WhitelistPlugin extends JavaPlugin {
         Duration http = Duration.ofSeconds(Math.max(5, getConfig().getLong("http-timeout-seconds", 30)));
         Duration login = Duration.ofSeconds(Math.max(60, getConfig().getLong("device-login-timeout-seconds", 900)));
         Duration ai = Duration.ofSeconds(Math.max(5, getConfig().getLong("openrouter-timeout-seconds", 45)));
-        Duration craftlandsTimeout = Duration.ofSeconds(Math.max(5, getConfig().getLong("craftlands-timeout-seconds", 15)));
+        Duration ultraServersTimeout = Duration.ofSeconds(Math.max(5, getConfig().getLong("ultraservers-timeout-seconds", 15)));
         String key = System.getenv("OPENROUTER_API_KEY");
         if (key == null || key.isBlank()) key = getConfig().getString("openrouter-api-key", "");
-        String craftlandsKey = System.getenv("CRAFTLANDS_API_KEY");
-        if (craftlandsKey == null || craftlandsKey.isBlank()) craftlandsKey = getConfig().getString("craftlands-api-key", "");
+        String ultraServersKey = System.getenv("ULTRASERVERS_API_KEY");
+        if (ultraServersKey == null || ultraServersKey.isBlank()) ultraServersKey = getConfig().getString("ultraservers-api-key", "");
         Path tokens = getDataFolder().toPath().resolve("auth").resolve("tokens.json");
 
         pool = Executors.newVirtualThreadPerTaskExecutor();
         auth = new MicrosoftXboxAuthService(getConfig().getString("microsoft-client-id", "00000000441cc96b"), tokens, http, login);
         lookup = new GamertagLookupService(auth, http);
         parser = new OpenRouterParsingService(key, getConfig().getString("openrouter-model", "openai/gpt-5.6-luna:nitro"), ai);
-        craftlands = new CraftlandsWhitelistService(
-                getConfig().getString("craftlands-api-base", "https://panel.craftlands.host"),
-                getConfig().getString("craftlands-server-uuid", ""), craftlandsKey, craftlandsTimeout);
+        ultraServers = new UltraServersWhitelistService(
+                getConfig().getString("ultraservers-api-base", "https://panel.ultraservers.com"),
+                getConfig().getString("ultraservers-server-id", ""), ultraServersKey, ultraServersTimeout);
         referrals = new Referrals(this);
         getServer().getPluginManager().registerEvents(referrals, this);
         referrals.start();
-        bot = new DiscordBot(this, pool, auth, lookup, parser, craftlands, referrals);
+        bot = new DiscordBot(this, pool, auth, lookup, parser, ultraServers, referrals);
         discord.register(this, bot, bot.commands());
         log.info("Registered Discord commands with plugincore.");
         log.debug("Whitelist services started; automatic review=" + autoEnabled()

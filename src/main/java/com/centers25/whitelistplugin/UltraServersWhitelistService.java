@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
-final class CraftlandsWhitelistService {
+final class UltraServersWhitelistService {
     private static final Pattern NAME = Pattern.compile("^[.-]?[A-Za-z0-9_ ]{1,32}$");
     private final String base;
     private final String server;
@@ -21,7 +21,7 @@ final class CraftlandsWhitelistService {
     private final Duration timeout;
     private final HttpClient http;
 
-    CraftlandsWhitelistService(String base, String server, String key, Duration timeout) {
+    UltraServersWhitelistService(String base, String server, String key, Duration timeout) {
         this.base = base.replaceAll("/+$", "");
         this.server = server.trim();
         this.key = key == null ? "" : key.trim();
@@ -32,7 +32,7 @@ final class CraftlandsWhitelistService {
     String add(String rawName) throws Exception {
         String name = rawName == null ? "" : rawName.trim();
         if (!valid(name)) throw new IllegalArgumentException("The proxy rejected the username format.");
-        if (key.isBlank() || server.isBlank()) throw new IllegalStateException("Craftlands proxy access is not configured.");
+        if (key.isBlank() || server.isBlank()) throw new IllegalStateException("UltraServers API access is not configured.");
         command(name);
         return "Command accepted.";
     }
@@ -59,13 +59,13 @@ final class CraftlandsWhitelistService {
     }
 
     private static JsonObject json(HttpResponse<String> response) throws IOException {
-        if (response.statusCode() / 100 != 2) throw new IOException("Craftlands returned HTTP " + response.statusCode() + ".");
+        if (response.statusCode() / 100 != 2) throw new IOException("UltraServers returned HTTP " + response.statusCode() + ".");
         if (response.body() == null || response.body().isBlank()) return new JsonObject();
         try {
             JsonElement value = JsonParser.parseString(response.body());
             return value.isJsonObject() ? value.getAsJsonObject() : new JsonObject();
         } catch (RuntimeException error) {
-            throw new IOException("Craftlands returned invalid JSON.", error);
+            throw new IOException("UltraServers returned invalid JSON.", error);
         }
     }
 

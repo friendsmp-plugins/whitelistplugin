@@ -45,20 +45,20 @@ final class DiscordBot extends ListenerAdapter {
     private final MicrosoftXboxAuthService auth;
     private final GamertagLookupService lookup;
     private final OpenRouterParsingService parser;
-    private final CraftlandsWhitelistService craftlands;
+    private final UltraServersWhitelistService ultraServers;
     private final Referrals referrals;
     private final AtomicBoolean authBusy = new AtomicBoolean();
     private final Set<String> busy = ConcurrentHashMap.newKeySet();
 
     DiscordBot(WhitelistPlugin plugin, ExecutorService pool, MicrosoftXboxAuthService auth,
                GamertagLookupService lookup, OpenRouterParsingService parser,
-               CraftlandsWhitelistService craftlands, Referrals referrals) {
+               UltraServersWhitelistService ultraServers, Referrals referrals) {
         this.plugin = plugin;
         this.pool = pool;
         this.auth = auth;
         this.lookup = lookup;
         this.parser = parser;
-        this.craftlands = craftlands;
+        this.ultraServers = ultraServers;
         this.referrals = referrals;
     }
 
@@ -344,7 +344,7 @@ final class DiscordBot extends ListenerAdapter {
         Checked checked = check(app);
         if (!checked.valid()) return "False";
         Referral referral = referral(guild, member, role, app, checked.name());
-        craftlands.add(checked.name());
+        ultraServers.add(checked.name());
         if (referral != null) referrals.reward(referral.userId(), referral.name(), checked.name());
         if (!member.getRoles().contains(role)) guild.addRoleToMember(member, role).complete();
 
