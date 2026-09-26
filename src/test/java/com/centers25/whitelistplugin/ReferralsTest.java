@@ -36,6 +36,10 @@ class ReferralsTest {
         assertTrue(Referrals.valid("Premium_Player"));
         assertTrue(Referrals.valid("-Cracked_Player"));
         assertTrue(Referrals.valid(".Bedrock_Player"));
+        assertTrue(Referrals.valid("Friend123"));
+        assertTrue(Referrals.valid("friend.name"));
+        assertTrue(Referrals.valid("Friend-123"));
+        assertTrue(Referrals.valid(".Friend-name_123"));
         assertFalse(Referrals.valid("Player; stop"));
     }
 }

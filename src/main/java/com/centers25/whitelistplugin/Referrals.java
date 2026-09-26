@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 final class Referrals implements Listener {
-    private static final Pattern NAME = Pattern.compile("^[.-]?[A-Za-z0-9_]{1,32}$");
+    private static final Pattern NAME = Pattern.compile("^[.-]?[A-Za-z0-9_.-]{1,32}$");
     private static final String ITEM = "minecraft:compass[minecraft:lodestone_tracker={target:{pos:[I;-68,67,-45],dimension:\"minecraft:overworld\"}},minecraft:custom_name={text:\"Friend Ticket\",color:\"gold\",italic:false},minecraft:lore=[{text:\"Redeem at spawn\",color:\"gray\",italic:false}],minecraft:custom_data={friend_ticket:1b}]";
     private final WhitelistPlugin plugin;
     private final Path file;

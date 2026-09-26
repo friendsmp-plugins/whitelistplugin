@@ -26,7 +26,11 @@ final class OpenRouterParsingService {
             Map Regular Java, Premium Java, and Java to REGULAR_JAVA. Map Cracked Java to CRACKED_JAVA. Map Bedrock to BEDROCK.
             Preserve the established in-game name exactly.
             Referral Name Discord identifies the referrer in Discord. Referral Name Minecraft identifies that same referrer's Minecraft account. Values may appear in a form or be clearly supplied or corrected in the conversation.
+            Treat referral labels case-insensitively and accept informal wording, abbreviations, and minor spelling mistakes such as "referrral". "Referral Discord", "referrer Discord", and "referral Discord name" mean Referral Name Discord. "Referral username", "referrer username", "referral IGN", "referral MC name", and "referral Minecraft" mean Referral Name Minecraft. An explicitly Discord-qualified username belongs to the Discord field.
+            Scan all later follow-up messages for referral answers and corrections, even when the original form omitted the fields or said N/A or none. A short reply to a referral question supplies the field asked for without needing to repeat the label. For example, after "what is your referral Discord?", "friend.name" supplies referral_discord_name; after "referral username?", ".Friend-123" supplies referral_minecraft_name. Combine these answers for the same active application and retain an earlier supplied field when a follow-up only supplies the other field. Use the latest clear answer or correction for each individual field.
+            Preserve referral names exactly, including capitalization, dots (including a leading dot), hyphens, underscores, and ordinary letters or digits. Names such as "Friend123", "friend.name", ".Friend123", and "Friend-123" are legitimate referral values; do not reject, strip punctuation, rewrite, or leave them empty because they do not resemble a standard Java username. Extract the supplied name without its field label or surrounding message formatting.
             Return each referral field empty only when that individual value is absent, N/A, none, or not provided.
+            A supplied Discord name does not require a mention or resolvable Discord user ID: keep referral_discord_name even when referral_discord_user_id is empty. Do not invent a missing name or copy one referral field into the other unless the conversation explicitly establishes that both names are the same.
             referral_discord_name is the established Discord value. referral_discord_user_id must identify the referrer using an author_id or mentioned user ID in the transcript, otherwise return empty.
             referral_minecraft_name is the established Minecraft value. Never treat the applicant, staff member, or unrelated participant as the referrer.
             """;
@@ -82,11 +86,11 @@ final class OpenRouterParsingService {
         JsonObject discord = string("Applicant Discord user ID from transcript metadata, or empty");
         discord.addProperty("pattern", "^$|^[0-9]{17,20}$");
         props.add("discord_user_id", discord);
-        props.add("referral_discord_name", string("Exact Referral Name Discord value, or empty"));
+        props.add("referral_discord_name", string("Exact referrer Discord name from form or follow-up (Referral Discord), preserving punctuation even without a resolved user ID, or empty"));
         JsonObject referralDiscord = string("Resolved referral Discord user ID from transcript metadata, or empty");
         referralDiscord.addProperty("pattern", "^$|^[0-9]{17,20}$");
         props.add("referral_discord_user_id", referralDiscord);
-        props.add("referral_minecraft_name", string("Exact Referral Name Minecraft value, or empty"));
+        props.add("referral_minecraft_name", string("Exact referrer Minecraft name from form or follow-up (Referral username/IGN), preserving dots, hyphens, underscores and case, or empty"));
 
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "object");
