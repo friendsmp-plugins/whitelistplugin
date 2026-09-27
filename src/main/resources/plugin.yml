@@ -5,8 +5,13 @@ api-version: '26.2'
 author: centers25
 depend: [plugincore]
 commands:
+  migrate:
+    permission: whitelistplugin.migrate
+    usage: /migrate
   whitelistpluginreload:
     permission: whitelistplugin.reload
 permissions:
+  whitelistplugin.migrate:
+    default: op
   whitelistplugin.reload:
     default: op

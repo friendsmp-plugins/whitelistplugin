@@ -2,11 +2,15 @@ package com.centers25.whitelistplugin;
 
 import com.google.gson.Gson;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +32,8 @@ final class Referrals implements Listener {
     private final Gson gson = new Gson();
     private State state;
     private ItemStack ticket;
+    private ItemStack oldTicket;
+    private BukkitTask migrationTask;
 
     Referrals(WhitelistPlugin plugin) {
         this(plugin, plugin.getDataFolder().toPath().resolve("referrals.json"));
@@ -59,12 +65,66 @@ final class Referrals implements Listener {
     void start() {
         if (plugin == null) return;
         ticket = Bukkit.getItemFactory().createItemStack(ITEM);
+        oldTicket = Bukkit.getItemFactory().createItemStack(ITEM.replace("pos:[I;-63,67,-45]", "pos:[I;-68,67,-45]"));
         Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getOnlinePlayers().forEach(this::deliver));
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         deliver(event.getPlayer());
+    }
+
+    void migrate(CommandSender sender) {
+        if (migrationTask != null) {
+            sender.sendMessage("Friend Ticket migration is already running.");
+            return;
+        }
+        var players = Bukkit.getOnlinePlayers().stream().map(Player::getUniqueId).toList().iterator();
+        sender.sendMessage("Migration started");
+        migrationTask = new BukkitRunnable() {
+            private int scanned;
+            private int converted;
+
+            @Override
+            public void run() {
+                if (players.hasNext()) {
+                    Player player = Bukkit.getPlayer(players.next());
+                    if (player != null) {
+                        converted += migrate(player);
+                        scanned++;
+                    }
+                }
+                if (!players.hasNext()) {
+                    cancel();
+                    migrationTask = null;
+                    sender.sendMessage("Migration complete: updated " + converted + " Friend Tickets across " + scanned + " online players.");
+                }
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    void stop() {
+        if (migrationTask != null) {
+            migrationTask.cancel();
+            migrationTask = null;
+        }
+    }
+
+    private int migrate(Player player) {
+        return migrate(player.getInventory()) + migrate(player.getEnderChest());
+    }
+
+    private int migrate(Inventory inventory) {
+        int converted = 0;
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack current = inventory.getItem(slot);
+            if (current == null || !current.isSimilar(oldTicket)) continue;
+            ItemStack replacement = ticket.clone();
+            replacement.setAmount(current.getAmount());
+            inventory.setItem(slot, replacement);
+            converted += current.getAmount();
+        }
+        return converted;
     }
 
     static boolean valid(String name) {

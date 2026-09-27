@@ -84,6 +84,18 @@ public final class WhitelistPlugin extends JavaPlugin {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
+        if (command.getName().equals("migrate")) {
+            if (!sender.hasPermission("whitelistplugin.migrate")) {
+                sender.sendMessage("You do not have permission to migrate Friend Tickets.");
+                return true;
+            }
+            if (args.length != 0) {
+                sender.sendMessage("Usage: /migrate");
+                return true;
+            }
+            referrals.migrate(sender);
+            return true;
+        }
         if (!command.getName().equals("whitelistpluginreload")) return false;
         if (!sender.hasPermission("whitelistplugin.reload")) {
             sender.sendMessage("You do not have permission to reload whitelistplugin.");
@@ -112,7 +124,10 @@ public final class WhitelistPlugin extends JavaPlugin {
         if (log != null) log.debug("Stopping whitelist services.");
         if (discord != null) discord.unregister(this);
         if (pool != null) pool.shutdownNow();
-        if (referrals != null) HandlerList.unregisterAll(referrals);
+        if (referrals != null) {
+            referrals.stop();
+            HandlerList.unregisterAll(referrals);
+        }
         pool = null;
         bot = null;
         discord = null;
