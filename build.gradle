@@ -23,6 +23,7 @@ dependencies {
     compileOnly 'net.dv8tion:JDA:6.5.0'
     implementation 'com.google.code.gson:gson:2.13.2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testImplementation 'org.mockito:mockito-core:5.18.0'
     testImplementation 'io.papermc.paper:paper-api:26.2.build.112-stable'
     testImplementation 'net.dv8tion:JDA:6.5.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'

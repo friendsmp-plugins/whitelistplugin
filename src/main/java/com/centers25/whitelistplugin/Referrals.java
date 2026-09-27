@@ -9,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -32,7 +33,6 @@ final class Referrals implements Listener {
     private final Gson gson = new Gson();
     private State state;
     private ItemStack ticket;
-    private ItemStack oldTicket;
     private BukkitTask migrationTask;
 
     Referrals(WhitelistPlugin plugin) {
@@ -65,7 +65,6 @@ final class Referrals implements Listener {
     void start() {
         if (plugin == null) return;
         ticket = Bukkit.getItemFactory().createItemStack(ITEM);
-        oldTicket = Bukkit.getItemFactory().createItemStack(ITEM.replace("pos:[I;-63,67,-45]", "pos:[I;-68,67,-45]"));
         Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getOnlinePlayers().forEach(this::deliver));
     }
 
@@ -115,16 +114,32 @@ final class Referrals implements Listener {
     }
 
     private int migrate(Inventory inventory) {
+        return migrate(inventory, ticket);
+    }
+
+    static int migrate(Inventory inventory, ItemStack ticket) {
+        ItemStack identity = withoutLodestone(ticket);
         int converted = 0;
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             ItemStack current = inventory.getItem(slot);
-            if (current == null || !current.isSimilar(oldTicket)) continue;
+            if (current == null || current.isSimilar(ticket)
+                    || !withoutLodestone(current).isSimilar(identity)) continue;
             ItemStack replacement = ticket.clone();
             replacement.setAmount(current.getAmount());
             inventory.setItem(slot, replacement);
             converted += current.getAmount();
         }
         return converted;
+    }
+
+    private static ItemStack withoutLodestone(ItemStack item) {
+        ItemStack normalized = item.clone();
+        if (normalized.getItemMeta() instanceof CompassMeta meta) {
+            meta.setLodestone(null);
+            meta.setLodestoneTracked(false);
+            normalized.setItemMeta(meta);
+        }
+        return normalized;
     }
 
     static boolean valid(String name) {
