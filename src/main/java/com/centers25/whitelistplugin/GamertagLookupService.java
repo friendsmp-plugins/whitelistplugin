@@ -151,7 +151,7 @@ final class GamertagLookupService {
 
     static boolean validCracked(String rawUsername) {
         String username = rawUsername == null ? "" : rawUsername.trim();
-        return username.matches("[A-Za-z0-9_]{3,16}");
+        return username.matches("[A-Za-z0-9_]{3,15}");
     }
 
     static String crackedName(String rawUsername) {
